@@ -645,9 +645,6 @@ if ("serviceWorker" in navigator) {
     if (e.key === "Escape") { labelEdit.value = state.label; labelEdit.blur(); }
   });
 
-  // Tap anywhere toggles pause/resume
-  screen.addEventListener("click", function () { if (running) setPlaying(!playing); });
-
   // Keyboard (handy on a computer or with an iPad keyboard)
   document.addEventListener("keydown", function (e) {
     if (!running) return;
