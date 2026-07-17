@@ -558,7 +558,7 @@
     <div>
       <label class="field-label" for="labelInput">Title</label>
       <div class="title-wrap" id="titleWrap">
-        <textarea id="labelInput" rows="2" placeholder="PREPARATION" autocomplete="off"></textarea>
+        <textarea id="labelInput" rows="2" placeholder="ADD A TITLE…" autocomplete="off"></textarea>
         <button type="button" id="bankAdd" aria-label="Save title to list">＋</button>
         <button type="button" id="bankToggle" aria-label="Saved titles">▾</button>
         <div id="bankList"></div>
@@ -591,7 +591,7 @@
 
 <div id="timerScreen">
   <div id="labelZone">
-    <div id="labelText">PREPARATION</div>
+    <div id="labelText"></div>
     <textarea id="labelEdit" rows="1" autocomplete="off" aria-label="Edit title"></textarea>
   </div>
   <div id="timeZone">
@@ -640,7 +640,7 @@ if ("serviceWorker" in navigator) {
   var LS_KEY = "stagetimer-v1";
 
   var state = {
-    label: "PREPARATION",
+    label: "",
     minutes: 10,
     seconds: 0,
     bank: []              // saved titles, most recent first
@@ -962,7 +962,7 @@ if ("serviceWorker" in navigator) {
   }
 
   function enterTimer() {
-    state.label = labelInput.value.trim() || "PREPARATION";
+    state.label = labelInput.value.trim(); // empty = show no title on stage
     labelInput.value = state.label;
     saveToBank(state.label);
     setBank(false);
@@ -1134,12 +1134,10 @@ if ("serviceWorker" in navigator) {
   // ----- edit title in place (timer keeps running) -----
   function commitLabel() {
     var v = labelEdit.value.trim();
-    if (v) {
-      state.label = v;
-      labelInput.value = v;
-      saveToBank(v);
-      persist();
-    }
+    state.label = v; // clearing the text removes the title from the stage
+    labelInput.value = v;
+    if (v) saveToBank(v);
+    persist();
     labelText.textContent = state.label;
     labelZone.classList.remove("editing");
   }
