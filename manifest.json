@@ -1,6 +1,6 @@
 {
-  "name": "Stage Timer",
-  "short_name": "Timer",
+  "name": "SPro Countdown",
+  "short_name": "SPro",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#0B0D12",
