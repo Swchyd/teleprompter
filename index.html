@@ -20,8 +20,7 @@
     --ink: #F0EEE8;
     --ink-dim: #9AA3B2;
     --accent: #E3A44A;
-    --ok: #8BB89A;
-    --warn: #E3A44A;
+    --bright: #FFD60A;
     --over: #E25C4A;
     --radius: 14px;
   }
@@ -185,6 +184,39 @@
     text-align: center;
     text-wrap: balance;
     line-height: 1.1;
+    cursor: pointer;
+    border-bottom: 3px dashed transparent;
+  }
+  #timerScreen.paused #labelText { border-bottom-color: var(--line); }
+  #labelEdit {
+    display: none;
+    width: 92%;
+    font-size: min(8.5vw, 11vh);
+    font-weight: 800;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink);
+    text-align: center;
+    line-height: 1.1;
+    background: var(--panel);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius);
+    padding: .05em .2em;
+    font-family: inherit;
+  }
+  #labelZone.editing #labelText { display: none; }
+  #labelZone.editing #labelEdit { display: block; }
+
+  #clock {
+    position: absolute;
+    top: max(10px, env(safe-area-inset-top));
+    right: 14px;
+    z-index: 3;
+    font-size: min(5vw, 6.5vh);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .04em;
+    color: var(--bright);
   }
 
   #timeZone {
@@ -201,10 +233,9 @@
     font-variant-numeric: tabular-nums;
     letter-spacing: .02em;
     line-height: 1;
-    color: var(--ok);
+    color: var(--bright);
     transition: color .3s;
   }
-  #timeText.warn { color: var(--warn); }
   #timeText.over {
     color: var(--over);
     animation: overPulse 1s ease-in-out infinite;
@@ -342,12 +373,16 @@
 </div>
 
 <div id="timerScreen">
-  <div id="labelZone"><div id="labelText">PREPARATION</div></div>
+  <div id="labelZone">
+    <div id="labelText">PREPARATION</div>
+    <input type="text" id="labelEdit" autocomplete="off" aria-label="Edit title">
+  </div>
   <div id="timeZone">
     <div id="timeText">10:00</div>
     <div id="pausedBadge">Paused</div>
   </div>
   <button id="exitBtn" type="button">✕ Exit</button>
+  <div id="clock">00:00:00</div>
   <div id="controls">
     <button type="button" id="restartBtn">⟲<small>Restart</small></button>
     <button type="button" id="minusBtn">−1<small>min</small></button>
@@ -384,7 +419,9 @@
   var $ = function (id) { return document.getElementById(id); };
   var setup = $("setup"), screen = $("timerScreen");
   var labelInput = $("labelInput"), labelText = $("labelText");
+  var labelZone = $("labelZone"), labelEdit = $("labelEdit");
   var timeText = $("timeText"), timeZone = $("timeZone");
+  var clockEl = $("clock");
   var playBtn = $("playBtn");
 
   // ----- setup screen wiring -----
@@ -440,14 +477,19 @@
     }
     var remainMs = total - elapsedMs;
     if (remainMs > 0) {
-      var remain = Math.ceil(remainMs / 1000);
-      timeText.textContent = fmt(remain);
-      if (remain <= 60) timeText.classList.add("warn");
+      timeText.textContent = fmt(Math.ceil(remainMs / 1000));
     } else {
       var over = Math.floor(-remainMs / 1000);
       timeText.innerHTML = '<span class="plus">+</span>' + fmt(over);
       timeText.classList.add("over");
     }
+  }
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  function renderClock() {
+    var d = new Date();
+    clockEl.textContent = pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
   }
 
   function tick(now) {
@@ -457,6 +499,7 @@
       renderTimer();
     }
     lastTick = now;
+    renderClock();
     rafId = requestAnimationFrame(tick);
   }
 
@@ -474,6 +517,7 @@
     elapsedMs = 0;
     extraMs = 0;
     renderTimer();
+    renderClock();
     setup.style.display = "none";
     screen.classList.add("active");
     setPlaying(true);
@@ -525,6 +569,33 @@
   });
   document.querySelectorAll("#controls, #exitBtn").forEach(function (el) {
     el.addEventListener("click", function (e) { e.stopPropagation(); });
+  });
+
+  // ----- edit title in place (timer keeps running) -----
+  function commitLabel() {
+    var v = labelEdit.value.trim();
+    if (v) {
+      state.label = v;
+      labelInput.value = v;
+      persist();
+    }
+    labelText.textContent = state.label;
+    labelZone.classList.remove("editing");
+  }
+
+  labelZone.addEventListener("click", function (e) {
+    e.stopPropagation(); // don't toggle pause
+    if (labelZone.classList.contains("editing")) return;
+    labelEdit.value = state.label;
+    labelZone.classList.add("editing");
+    labelEdit.focus();
+    labelEdit.select();
+  });
+  labelEdit.addEventListener("blur", commitLabel);
+  labelEdit.addEventListener("keydown", function (e) {
+    e.stopPropagation();
+    if (e.key === "Enter") labelEdit.blur();
+    if (e.key === "Escape") { labelEdit.value = state.label; labelEdit.blur(); }
   });
 
   // Tap anywhere toggles pause/resume
