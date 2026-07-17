@@ -112,11 +112,10 @@
 
   /* ---------- Title bank dropdown ---------- */
   .title-wrap { position: relative; }
-  .title-wrap #labelInput { padding-right: 56px; }
-  #bankToggle {
+  .title-wrap #labelInput { padding-right: 106px; }
+  #bankToggle, #bankAdd {
     position: absolute;
     top: 6px;
-    right: 6px;
     width: 44px;
     height: 44px;
     border-radius: 10px;
@@ -125,7 +124,10 @@
     font-size: 16px;
     transition: transform .2s;
   }
-  #bankToggle:active { background: var(--line); }
+  #bankToggle { right: 6px; }
+  #bankAdd { right: 56px; font-size: 20px; }
+  #bankAdd.saved { color: var(--accent); }
+  #bankToggle:active, #bankAdd:active { background: var(--line); }
   .title-wrap.open #bankToggle { transform: rotate(180deg); color: var(--accent); }
   #bankList {
     display: none;
@@ -177,6 +179,19 @@
     color: var(--ink-dim);
     text-align: center;
   }
+
+  /* title bank inside the timer drawer */
+  #drawerBank {
+    max-height: 30vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+  }
+  #drawerBank .pick { font-size: 13px; padding: 11px 12px; }
+  #drawerBank .pick.active { color: var(--accent); }
+  #drawerBank .bank-empty { padding: 12px; font-size: 12px; }
   .settings {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -532,6 +547,7 @@
       <label class="field-label" for="labelInput">Title</label>
       <div class="title-wrap" id="titleWrap">
         <textarea id="labelInput" rows="2" placeholder="PREPARATION" autocomplete="off"></textarea>
+        <button type="button" id="bankAdd" aria-label="Save title to list">＋</button>
         <button type="button" id="bankToggle" aria-label="Saved titles">▾</button>
         <div id="bankList"></div>
       </div>
@@ -583,6 +599,8 @@
   <div id="drawer">
     <button type="button" id="drawerTab" aria-label="Set new time">‹</button>
     <div id="drawerBody">
+      <label class="field-label">Title</label>
+      <div id="drawerBank"></div>
       <label class="field-label">Set New Time</label>
       <div class="stepper">
         <button type="button" data-nstep="min" data-d="-1" aria-label="Fewer minutes">−</button>
@@ -744,6 +762,22 @@ if ("serviceWorker" in navigator) {
   bankToggle.addEventListener("click", function (e) {
     e.stopPropagation();
     setBank(!titleWrap.classList.contains("open"));
+  });
+
+  // save the typed title to the bank right away (no need to start the timer)
+  var bankAdd = $("bankAdd"), bankAddTimer = 0;
+  bankAdd.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (!labelInput.value.trim()) return;
+    saveToBank(labelInput.value);
+    if (titleWrap.classList.contains("open")) renderBank();
+    bankAdd.textContent = "✓";
+    bankAdd.classList.add("saved");
+    clearTimeout(bankAddTimer);
+    bankAddTimer = setTimeout(function () {
+      bankAdd.textContent = "＋";
+      bankAdd.classList.remove("saved");
+    }, 900);
   });
 
   // tap anywhere else on the setup screen closes the dropdown
@@ -920,10 +954,41 @@ if ("serviceWorker" in navigator) {
     nextSec.value = pad2(state.seconds);
   }
 
+  // title bank inside the drawer: tap a title to put it on screen right away
+  var drawerBank = $("drawerBank");
+  function renderDrawerBank() {
+    drawerBank.textContent = "";
+    if (!state.bank.length) {
+      var empty = document.createElement("div");
+      empty.className = "bank-empty";
+      empty.textContent = "Belum ada judul tersimpan.";
+      drawerBank.appendChild(empty);
+      return;
+    }
+    state.bank.forEach(function (title) {
+      var row = document.createElement("div");
+      row.className = "bank-item";
+      var pick = document.createElement("button");
+      pick.type = "button";
+      pick.className = "pick" + (title === state.label ? " active" : "");
+      pick.textContent = title;
+      pick.addEventListener("click", function (e) {
+        e.stopPropagation();
+        state.label = title;
+        labelInput.value = title;
+        labelText.textContent = title;
+        persist();
+        renderDrawerBank();
+      });
+      row.appendChild(pick);
+      drawerBank.appendChild(row);
+    });
+  }
+
   function setDrawer(open) {
     drawer.classList.toggle("open", open);
     drawerTab.textContent = open ? "›" : "‹";
-    if (open) fillDrawer();
+    if (open) { fillDrawer(); renderDrawerBank(); }
   }
 
   drawerTab.addEventListener("click", function (e) {
