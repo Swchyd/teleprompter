@@ -42,7 +42,7 @@
     cursor: pointer;
     touch-action: manipulation;
   }
-  button:focus-visible, input:focus-visible {
+  button:focus-visible, input:focus-visible, textarea:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
@@ -92,7 +92,7 @@
     color: var(--ink-dim);
     margin-bottom: 7px;
   }
-  input[type="text"] {
+  #labelInput {
     width: 100%;
     background: var(--panel);
     border: 1px solid var(--line);
@@ -104,8 +104,10 @@
     letter-spacing: .06em;
     text-transform: uppercase;
     font-family: inherit;
+    resize: none;
+    line-height: 1.3;
   }
-  input[type="text"]::placeholder { color: #5B6474; font-weight: 500; }
+  #labelInput::placeholder { color: #5B6474; font-weight: 500; }
   .settings {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -183,7 +185,8 @@
     color: var(--ink);
     text-align: center;
     text-wrap: balance;
-    line-height: 1.1;
+    white-space: pre-line;
+    line-height: 1.15;
     cursor: pointer;
     border-bottom: 3px dashed transparent;
   }
@@ -191,18 +194,21 @@
   #labelEdit {
     display: none;
     width: 92%;
+    max-height: 100%;
     font-size: min(8.5vw, 11vh);
     font-weight: 800;
     letter-spacing: .14em;
     text-transform: uppercase;
     color: var(--ink);
     text-align: center;
-    line-height: 1.1;
+    line-height: 1.15;
     background: var(--panel);
     border: 2px solid var(--accent);
     border-radius: var(--radius);
     padding: .05em .2em;
     font-family: inherit;
+    resize: none;
+    overflow-y: auto;
   }
   #labelZone.editing #labelText { display: none; }
   #labelZone.editing #labelEdit { display: block; }
@@ -260,7 +266,10 @@
     padding: 0 16px;
   }
   #timerScreen.swapped #labelText,
-  #timerScreen.swapped #labelEdit { font-size: min(13vw, 22vh); }
+  #timerScreen.swapped #labelEdit {
+    font-size: min(5.8vw, 10vh); /* ~20 uppercase characters per line */
+    letter-spacing: .08em;
+  }
 
   #pausedBadge {
     position: absolute;
@@ -359,7 +368,7 @@
 
     <div>
       <label class="field-label" for="labelInput">Title shown above the timer</label>
-      <input type="text" id="labelInput" placeholder="PREPARATION" autocomplete="off">
+      <textarea id="labelInput" rows="2" placeholder="PREPARATION" autocomplete="off"></textarea>
     </div>
 
     <div class="settings">
@@ -389,7 +398,7 @@
 <div id="timerScreen">
   <div id="labelZone">
     <div id="labelText">PREPARATION</div>
-    <input type="text" id="labelEdit" autocomplete="off" aria-label="Edit title">
+    <textarea id="labelEdit" rows="1" autocomplete="off" aria-label="Edit title"></textarea>
   </div>
   <div id="timeZone">
     <div id="timeText">10:00</div>
@@ -595,18 +604,24 @@
     labelZone.classList.remove("editing");
   }
 
+  function growLabelEdit() {
+    labelEdit.style.height = "auto";
+    labelEdit.style.height = labelEdit.scrollHeight + "px";
+  }
+
   labelZone.addEventListener("click", function (e) {
     e.stopPropagation(); // don't toggle pause
     if (labelZone.classList.contains("editing")) return;
     labelEdit.value = state.label;
     labelZone.classList.add("editing");
+    growLabelEdit();
     labelEdit.focus();
     labelEdit.select();
   });
+  labelEdit.addEventListener("input", growLabelEdit);
   labelEdit.addEventListener("blur", commitLabel);
   labelEdit.addEventListener("keydown", function (e) {
-    e.stopPropagation();
-    if (e.key === "Enter") labelEdit.blur();
+    e.stopPropagation(); // Enter adds a new line; hide keyboard / tap outside finishes
     if (e.key === "Escape") { labelEdit.value = state.label; labelEdit.blur(); }
   });
 
