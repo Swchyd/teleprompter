@@ -468,19 +468,12 @@
   }
 
   function renderTimer() {
-    var total = totalMs();
-    timeText.classList.remove("warn", "over");
-    if (total <= 0) {
-      // no countdown set: plain stopwatch
-      timeText.textContent = fmt(Math.floor(elapsedMs / 1000));
-      return;
-    }
-    var remainMs = total - elapsedMs;
+    var remainMs = totalMs() - elapsedMs;
+    timeText.classList.remove("over");
     if (remainMs > 0) {
       timeText.textContent = fmt(Math.ceil(remainMs / 1000));
     } else {
-      var over = Math.floor(-remainMs / 1000);
-      timeText.innerHTML = '<span class="plus">+</span>' + fmt(over);
+      timeText.innerHTML = '<span class="plus">+</span>' + fmt(Math.floor(-remainMs / 1000));
       timeText.classList.add("over");
     }
   }
