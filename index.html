@@ -248,9 +248,23 @@
     #timeText.over { animation: none; }
   }
 
+  /* swapped: title fills the middle, countdown small on top */
+  #timerScreen.swapped #timeZone {
+    order: -1;
+    flex: 0 0 25%;
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  #timerScreen.swapped #timeText { font-size: min(10vw, 15vh); }
+  #timerScreen.swapped #labelZone {
+    flex: 1 1 75%;
+    padding: 0 16px;
+  }
+  #timerScreen.swapped #labelText,
+  #timerScreen.swapped #labelEdit { font-size: min(13vw, 22vh); }
+
   #pausedBadge {
     position: absolute;
-    bottom: 14%;
+    bottom: calc(max(12px, env(safe-area-inset-bottom)) + 82px);
     left: 50%;
     transform: translateX(-50%);
     font-size: 14px;
@@ -379,8 +393,8 @@
   </div>
   <div id="timeZone">
     <div id="timeText">10:00</div>
-    <div id="pausedBadge">Paused</div>
   </div>
+  <div id="pausedBadge">Paused</div>
   <button id="exitBtn" type="button">✕ Exit</button>
   <div id="clock">00:00:00</div>
   <div id="controls">
@@ -388,6 +402,7 @@
     <button type="button" id="minusBtn">−1<small>min</small></button>
     <button type="button" id="playBtn" aria-label="Play or pause">▶</button>
     <button type="button" id="plusBtn">+1<small>min</small></button>
+    <button type="button" id="swapBtn">⇅<small>Swap</small></button>
   </div>
 </div>
 
@@ -512,6 +527,7 @@
     renderTimer();
     renderClock();
     setup.style.display = "none";
+    screen.classList.remove("swapped");
     screen.classList.add("active");
     setPlaying(true);
     running = true;
@@ -559,6 +575,9 @@
   });
   $("minusBtn").addEventListener("click", function (e) {
     e.stopPropagation(); extraMs -= 60000; renderTimer();
+  });
+  $("swapBtn").addEventListener("click", function (e) {
+    e.stopPropagation(); screen.classList.toggle("swapped");
   });
   document.querySelectorAll("#controls, #exitBtn").forEach(function (el) {
     el.addEventListener("click", function (e) { e.stopPropagation(); });
