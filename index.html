@@ -159,7 +159,14 @@
     letter-spacing: .02em;
   }
   #startBtn:active { filter: brightness(.92); }
-  .hint { color: var(--ink-dim); font-size: 13px; line-height: 1.5; margin: 0; }
+  #setupClock {
+    text-align: center;
+    font-size: 36px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .04em;
+    color: var(--bright);
+  }
 
   /* ---------- Timer screen ---------- */
   #timerScreen {
@@ -368,7 +375,7 @@
     </div>
 
     <div>
-      <label class="field-label" for="labelInput">Title shown above the timer</label>
+      <label class="field-label" for="labelInput">Title</label>
       <textarea id="labelInput" rows="2" placeholder="PREPARATION" autocomplete="off"></textarea>
     </div>
 
@@ -391,8 +398,8 @@
       </div>
     </div>
 
-    <button id="startBtn" type="button">Start timer</button>
-    <p class="hint">The countdown fills the screen below your title. When it reaches zero it keeps counting <b style="color:var(--over)">+overtime in red</b>. Tap anywhere to pause or resume; +1 / −1 adjust the remaining time while it runs. Settings are saved on this device.</p>
+    <button id="startBtn" type="button">START TIMER</button>
+    <div id="setupClock">00:00:00</div>
   </div>
 </div>
 
@@ -509,10 +516,18 @@ if ("serviceWorker" in navigator) {
 
   function pad2(n) { return (n < 10 ? "0" : "") + n; }
 
-  function renderClock() {
+  function nowHMS() {
     var d = new Date();
-    clockEl.textContent = pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
+    return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
   }
+
+  function renderClock() {
+    clockEl.textContent = nowHMS();
+  }
+
+  var setupClock = $("setupClock");
+  setupClock.textContent = nowHMS();
+  setInterval(function () { setupClock.textContent = nowHMS(); }, 250);
 
   function tick(now) {
     if (!running) return;
