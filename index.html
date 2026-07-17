@@ -612,8 +612,10 @@ if ("serviceWorker" in navigator) {
   var elapsedMs = 0;        // time spent so far
   var extraMs = 0;          // live +1/−1 adjustments
   var lastTick = 0;
-  var rafId = 0;
+  var timerId = 0;
   var wakeLock = null;
+  var shownTime = "";       // last rendered strings — skip DOM writes
+  var shownClock = "";      // when nothing changed (battery)
 
   function totalMs() {
     return (state.minutes * 60 + state.seconds) * 1000 + extraMs;
@@ -627,12 +629,16 @@ if ("serviceWorker" in navigator) {
 
   function renderTimer() {
     var remainMs = totalMs() - elapsedMs;
-    timeText.classList.remove("over");
-    if (remainMs > 0) {
-      timeText.textContent = fmt(Math.ceil(remainMs / 1000));
-    } else {
-      timeText.innerHTML = '<span class="plus">+</span>' + fmt(Math.floor(-remainMs / 1000));
+    var over = remainMs <= 0;
+    var txt = over ? "+" + fmt(Math.floor(-remainMs / 1000)) : fmt(Math.ceil(remainMs / 1000));
+    if (txt === shownTime) return;
+    shownTime = txt;
+    if (over) {
+      timeText.innerHTML = '<span class="plus">+</span>' + txt.slice(1);
       timeText.classList.add("over");
+    } else {
+      timeText.textContent = txt;
+      timeText.classList.remove("over");
     }
   }
 
@@ -644,22 +650,34 @@ if ("serviceWorker" in navigator) {
   }
 
   function renderClock() {
-    clockEl.textContent = nowHMS();
+    var t = nowHMS();
+    if (t === shownClock) return;
+    shownClock = t;
+    clockEl.textContent = t;
   }
 
   var setupClock = $("setupClock");
-  setupClock.textContent = nowHMS();
-  setInterval(function () { setupClock.textContent = nowHMS(); }, 250);
+  var shownSetupClock = "";
+  function renderSetupClock() {
+    var t = nowHMS();
+    if (t === shownSetupClock) return;
+    shownSetupClock = t;
+    setupClock.textContent = t;
+  }
+  renderSetupClock();
+  setInterval(renderSetupClock, 250);
 
-  function tick(now) {
+  // 4 ticks/s (instead of a 60–120 fps rAF loop) is plenty for a
+  // once-per-second display and lets the CPU/GPU idle between updates.
+  function tick() {
     if (!running) return;
+    var now = performance.now();
     if (playing) {
       elapsedMs += now - lastTick;
       renderTimer();
     }
     lastTick = now;
     renderClock();
-    rafId = requestAnimationFrame(tick);
   }
 
   function setPlaying(p) {
@@ -675,6 +693,8 @@ if ("serviceWorker" in navigator) {
     labelText.textContent = state.label;
     elapsedMs = 0;
     extraMs = 0;
+    shownTime = "";
+    shownClock = "";
     renderTimer();
     renderClock();
     setup.style.display = "none";
@@ -685,13 +705,13 @@ if ("serviceWorker" in navigator) {
     setPlaying(true);
     running = true;
     lastTick = performance.now();
-    rafId = requestAnimationFrame(tick);
+    timerId = setInterval(tick, 250);
     requestWakeLock();
   }
 
   function exitTimer() {
     running = false;
-    cancelAnimationFrame(rafId);
+    clearInterval(timerId);
     releaseWakeLock();
     screen.classList.remove("active");
     screen.classList.remove("flashing");
