@@ -772,16 +772,30 @@ if ("serviceWorker" in navigator) {
     if (open) renderBank();
   }
 
-  // long-press (0.4 s) a bank row, then drag up/down to reorder
+  // touch: long-press (0.4 s) a bank row, then drag up/down to reorder
+  // mouse: press and drag right away
   function enableReorder(container) {
-    var pressTimer = 0, dragRow = null, active = false, startY = 0;
+    var pressTimer = 0, dragRow = null, pendingRow = null, active = false;
+    var startY = 0, isMouse = false;
 
     function cancelPress() { clearTimeout(pressTimer); }
 
+    function activate() {
+      cancelPress();
+      active = true;
+      dragRow = pendingRow;
+      dragRow.classList.add("dragging");
+      if (navigator.vibrate) navigator.vibrate(10);
+    }
+
     function onMove(e) {
       if (!active) {
-        if (Math.abs(e.clientY - startY) > 10) cancelPress(); // it's a scroll
-        return;
+        if (Math.abs(e.clientY - startY) > 8) {
+          if (isMouse) activate();   // mouse drags immediately
+          else { cancelPress(); return; } // touch move = scroll
+        } else {
+          return;
+        }
       }
       var rows = Array.prototype.filter.call(container.children, function (el) {
         return el !== dragRow && el.classList.contains("bank-item");
@@ -807,6 +821,7 @@ if ("serviceWorker" in navigator) {
       active = false;
       dragRow.classList.remove("dragging");
       dragRow = null;
+      pendingRow = null;
       // save the new order as it now stands in the DOM
       state.bank = Array.prototype.map.call(
         container.querySelectorAll(".bank-item"),
@@ -823,13 +838,10 @@ if ("serviceWorker" in navigator) {
       var row = e.target.closest ? e.target.closest(".bank-item") : null;
       if (!row) return;
       startY = e.clientY;
+      isMouse = e.pointerType === "mouse";
+      pendingRow = row;
       cancelPress();
-      pressTimer = setTimeout(function () {
-        active = true;
-        dragRow = row;
-        row.classList.add("dragging");
-        if (navigator.vibrate) navigator.vibrate(10);
-      }, 400);
+      pressTimer = setTimeout(activate, 400);
       document.addEventListener("pointermove", onMove);
       document.addEventListener("pointerup", onUp);
       document.addEventListener("pointercancel", onUp);
