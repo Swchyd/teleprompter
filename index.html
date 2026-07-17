@@ -142,6 +142,20 @@
     text-align: center;
     flex: 1;
   }
+  .stepper .val input {
+    width: 100%;
+    background: none;
+    border: none;
+    border-radius: 8px;
+    color: var(--ink);
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+    padding: 2px 0;
+  }
+  .stepper .val input:focus {
+    background: var(--panel-2);
+  }
   .stepper .val small {
     display: block;
     font-size: 11px;
@@ -384,7 +398,7 @@
         <label class="field-label">Minutes</label>
         <div class="stepper">
           <button type="button" data-step="min" data-d="-1" aria-label="Fewer minutes">−</button>
-          <div class="val"><span id="minVal">10</span><small>min</small></div>
+          <div class="val"><input id="minVal" type="text" inputmode="numeric" value="10" autocomplete="off" aria-label="Minutes"><small>min</small></div>
           <button type="button" data-step="min" data-d="1" aria-label="More minutes">+</button>
         </div>
       </div>
@@ -392,7 +406,7 @@
         <label class="field-label">Seconds</label>
         <div class="stepper">
           <button type="button" data-step="sec" data-d="-1" aria-label="Fewer seconds">−</button>
-          <div class="val"><span id="secVal">00</span><small>sec</small></div>
+          <div class="val"><input id="secVal" type="text" inputmode="numeric" value="00" autocomplete="off" aria-label="Seconds"><small>sec</small></div>
           <button type="button" data-step="sec" data-d="1" aria-label="More seconds">+</button>
         </div>
       </div>
@@ -463,9 +477,11 @@ if ("serviceWorker" in navigator) {
   // ----- setup screen wiring -----
   labelInput.value = state.label;
 
+  var minVal = $("minVal"), secVal = $("secVal");
+
   function renderSetup() {
-    $("minVal").textContent = state.minutes;
-    $("secVal").textContent = (state.seconds < 10 ? "0" : "") + state.seconds;
+    minVal.value = state.minutes;
+    secVal.value = (state.seconds < 10 ? "0" : "") + state.seconds;
   }
 
   document.querySelectorAll("[data-step]").forEach(function (btn) {
@@ -476,6 +492,22 @@ if ("serviceWorker" in navigator) {
       renderSetup(); persist();
     });
   });
+
+  // typed input: digits only while typing; clamp and save when done
+  function wireTypedValue(input, max, commit) {
+    input.addEventListener("focus", function () { input.select(); });
+    input.addEventListener("input", function () {
+      var v = input.value.replace(/\D/g, "");
+      if (v !== input.value) input.value = v;
+      if (v !== "") commit(Math.min(max, Number(v)));
+    });
+    input.addEventListener("blur", function () { renderSetup(); persist(); });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") input.blur();
+    });
+  }
+  wireTypedValue(minVal, 180, function (v) { state.minutes = v; });
+  wireTypedValue(secVal, 59, function (v) { state.seconds = v; });
 
   labelInput.addEventListener("input", function () {
     state.label = labelInput.value;
