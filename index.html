@@ -634,7 +634,7 @@ if ("serviceWorker" in navigator) {
     if (txt === shownTime) return;
     shownTime = txt;
     if (over) {
-      timeText.innerHTML = '<span class="plus">+</span>' + txt.slice(1);
+      timeText.innerHTML = '<span class="plus">−</span>' + txt.slice(1);
       timeText.classList.add("over");
     } else {
       timeText.textContent = txt;
