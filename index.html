@@ -109,6 +109,74 @@
     line-height: 1.3;
   }
   #labelInput::placeholder { color: #5B6474; font-weight: 500; }
+
+  /* ---------- Title bank dropdown ---------- */
+  .title-wrap { position: relative; }
+  .title-wrap #labelInput { padding-right: 56px; }
+  #bankToggle {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: var(--panel-2);
+    color: var(--ink-dim);
+    font-size: 16px;
+    transition: transform .2s;
+  }
+  #bankToggle:active { background: var(--line); }
+  .title-wrap.open #bankToggle { transform: rotate(180deg); color: var(--accent); }
+  #bankList {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    right: 0;
+    max-height: 42vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 12px 32px rgba(0,0,0,.5);
+    z-index: 10;
+  }
+  .title-wrap.open #bankList { display: block; }
+  .bank-item {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--line);
+  }
+  .bank-item:last-child { border-bottom: none; }
+  .bank-item .pick {
+    flex: 1;
+    text-align: left;
+    padding: 14px 16px;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink);
+    white-space: pre-line;
+    min-width: 0;
+  }
+  .bank-item .pick:active { background: var(--line); }
+  .bank-item .del {
+    flex: 0 0 44px;
+    height: 44px;
+    margin-right: 4px;
+    border-radius: 10px;
+    color: var(--ink-dim);
+    font-size: 16px;
+  }
+  .bank-item .del:active { background: var(--line); color: var(--over); }
+  .bank-empty {
+    padding: 16px;
+    font-size: 13px;
+    color: var(--ink-dim);
+    text-align: center;
+  }
   .settings {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -462,7 +530,11 @@
 
     <div>
       <label class="field-label" for="labelInput">Title</label>
-      <textarea id="labelInput" rows="2" placeholder="PREPARATION" autocomplete="off"></textarea>
+      <div class="title-wrap" id="titleWrap">
+        <textarea id="labelInput" rows="2" placeholder="PREPARATION" autocomplete="off"></textarea>
+        <button type="button" id="bankToggle" aria-label="Saved titles">▾</button>
+        <div id="bankList"></div>
+      </div>
     </div>
 
     <div class="settings">
@@ -540,7 +612,8 @@ if ("serviceWorker" in navigator) {
   var state = {
     label: "PREPARATION",
     minutes: 10,
-    seconds: 0
+    seconds: 0,
+    bank: []              // saved titles, most recent first
   };
 
   // ----- persistence -----
@@ -550,6 +623,7 @@ if ("serviceWorker" in navigator) {
       for (var k in state) if (k in saved) state[k] = saved[k];
     }
   } catch (e) {}
+  if (!Array.isArray(state.bank)) state.bank = [];
 
   function persist() {
     try { localStorage.setItem(LS_KEY, JSON.stringify(state)); } catch (e) {}
@@ -605,6 +679,77 @@ if ("serviceWorker" in navigator) {
   });
 
   renderSetup();
+
+  // ----- title bank dropdown -----
+  var titleWrap = $("titleWrap"), bankToggle = $("bankToggle"), bankList = $("bankList");
+
+  function saveToBank(title) {
+    title = title.trim();
+    if (!title) return;
+    state.bank = state.bank.filter(function (t) {
+      return t.toUpperCase() !== title.toUpperCase();
+    });
+    state.bank.unshift(title);
+    if (state.bank.length > 30) state.bank.length = 30;
+    persist();
+  }
+
+  function renderBank() {
+    bankList.textContent = "";
+    if (!state.bank.length) {
+      var empty = document.createElement("div");
+      empty.className = "bank-empty";
+      empty.textContent = "Belum ada judul tersimpan — judul otomatis disimpan saat timer dimulai.";
+      bankList.appendChild(empty);
+      return;
+    }
+    state.bank.forEach(function (title) {
+      var row = document.createElement("div");
+      row.className = "bank-item";
+
+      var pick = document.createElement("button");
+      pick.type = "button";
+      pick.className = "pick";
+      pick.textContent = title;
+      pick.addEventListener("click", function () {
+        state.label = title;
+        labelInput.value = title;
+        persist();
+        setBank(false);
+      });
+
+      var del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.textContent = "✕";
+      del.setAttribute("aria-label", "Delete saved title");
+      del.addEventListener("click", function (e) {
+        e.stopPropagation();
+        state.bank = state.bank.filter(function (t) { return t !== title; });
+        persist();
+        renderBank();
+      });
+
+      row.appendChild(pick);
+      row.appendChild(del);
+      bankList.appendChild(row);
+    });
+  }
+
+  function setBank(open) {
+    titleWrap.classList.toggle("open", open);
+    if (open) renderBank();
+  }
+
+  bankToggle.addEventListener("click", function (e) {
+    e.stopPropagation();
+    setBank(!titleWrap.classList.contains("open"));
+  });
+
+  // tap anywhere else on the setup screen closes the dropdown
+  setup.addEventListener("click", function (e) {
+    if (!titleWrap.contains(e.target)) setBank(false);
+  });
 
   // ----- timer state -----
   var running = false;      // timer screen is open
@@ -689,6 +834,8 @@ if ("serviceWorker" in navigator) {
   function enterTimer() {
     state.label = labelInput.value.trim() || "PREPARATION";
     labelInput.value = state.label;
+    saveToBank(state.label);
+    setBank(false);
     persist();
     labelText.textContent = state.label;
     elapsedMs = 0;
@@ -827,6 +974,7 @@ if ("serviceWorker" in navigator) {
     if (v) {
       state.label = v;
       labelInput.value = v;
+      saveToBank(v);
       persist();
     }
     labelText.textContent = state.label;
